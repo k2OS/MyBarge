@@ -1,18 +1,7 @@
 /********************************************************************************
-*	RC Boat receiver using nRF24L01+											*
-*																				*
-*																				*
-*	The following links proved helpful in using the nrf24L01					*
-*	NRF24L01 With Arduinios SPI Library http://www.elecfreaks.com/480.html		*
-*	NRF24L01 Module Demo For Arduino http://www.elecfreaks.com/203.html			*
-*																				*
-*																				*
-*	CS		- Arduino digital pin 8,  nRF24L01 pin 3 (CE)						*
-*	CSN 	- Arduino digital pin 9,  nRF24L01 pin 4 (CSN)						*
-*	MOSI 	- Arduino digital pin 11, nRF24L01 pin 6 (MOSI) 					*
-*	MISO 	- Arduino digital pin 12, nRF24L01 pin 7 (MISO)						*
-*	CLK 	- Arduino digital pin 13, nRF24L01 pin 5 (SCK) 						*
-*																				*
+*	RC boat controller using nrF24L01
+* heavily inspired by https://github.com/shane-taurean/Pepsi_Bottle_RC_Boat											*
+* Initial one-arduino setup to test and add functionality in control of thrust with PS2 Joystick
 /*******************************************************************************/
 
 int EN_A  = 5;      // to 1,2EN of L293D
