@@ -1,7 +1,10 @@
 /********************************************************************************
 *	RC boat controller using nrF24L01
-* heavily inspired by https://github.com/shane-taurean/Pepsi_Bottle_RC_Boat											*
+* heavily inspired by https://github.com/shane-taurean/Pepsi_Bottle_RC_Boat											
 * Initial one-arduino setup to test and add functionality in control of thrust with PS2 Joystick
+*
+* TODO/Ideas:
+* - add trim on remote controller side to 1) allow for slight drift of the pot-values read from the joystick and 2) to conpensate for differences in the motors/drag of the boat. Might not be necessary at all.
 /*******************************************************************************/
 
 int EN_A  = 5;      // to 1,2EN of L293D
