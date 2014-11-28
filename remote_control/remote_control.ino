@@ -11,43 +11,48 @@
 #include <SPI.h>
 #include "nRF24L01.h"
 #include "RF24.h"
-
+#include "printf.h"
 RF24 radio(9,10);
-
-// where is the joystick
-int EN_A  = 5;      // to 1,2EN of L293D
-
-int IN_A1 = 2;      // to 1A of L293D
-int IN_A2 = 3;      // to 2A of L293D
-
-int EN_B  = 6;      // to 1,2EN of L293D
-
-int IN_B1 = 4;      // to 1A of L293D
-int IN_B2 = 7;      // to 2A of L293D
-
-
-int speed = 100;
-boolean dirx,diry = 1;  // 1 (true) indicates forward, 0 indicates reverse
+// radio addresses
+uint8_t addresses[][13] = {"MyBargeComs1","MyBargeComs2"}; // coms1 = remote, coms2 = barge
 
 int x_val,y_val = 0; // values read from the joystick controller
                      // these are to be sent to the receiver
 
-int left_speed,right_speed = 0;
+// for now we are only sending over 2 bytes (x_val and y_val) - we should send multiple bytes with different commands
+// attached to them - ie. winchUP/DOWN, lockHOME, goHOME etc. 
+uint8_t commandstring[8];
+int 
 
 unsigned long time = 0;
 
 
+// joystick pins
 int potPin_x = 1; //potentiometer to control the speed of motor 1
 int potPin_y = 0; //potentiometer to control the speed of motor 2
-
+int joyButton = A2;
 
 //**************************************************
 void setup() 
 {
-	Serial.begin( 9600 );
+	Serial.begin( 57600 );
+        printf_begin();
 	pinMode(potPin_x, INPUT); 
 	pinMode(potPin_y, INPUT); 
-	init_motors();
+
+        // init radio
+          radio.begin();                           // Setup and configure rf radio
+      //    radio.setChannel(1); // default is 76.. should be good
+          radio.setPALevel(RF24_PA_MAX);
+          radio.setDataRate(RF24_1MBPS);
+          radio.setAutoAck(1);                     // Ensure autoACK is enabled
+          radio.setRetries(2,15);                   // Optionally, increase the delay between retries & # of retries
+          radio.setCRCLength(RF24_CRC_8); 
+          radio.openWritingPipe(addresses[0]);          // must be reversed for the barge receiver
+//          radio.openReadingPipe(1,addresses[1]);
+      
+//          radio.startListening();                 // Start listening
+          radio.printDetails();                   // Dump the configuration of the rf unit for debugging
 
 	delay( 50 );
 
@@ -59,86 +64,23 @@ void loop() {
   x_val = analogRead(potPin_x)/4;
   y_val = analogRead(potPin_y)/4;
 
+  commandstring[0] = x_val;
+  commandstring[1] = y_val;
+  
   Serial.print("X: "); Serial.print(x_val); Serial.print(" Y: "); Serial.println(y_val);
-  if ( y_val < 130 || y_val > 140 ) {
-	if ( y_val < 130 ) {
-	y_val = map( y_val, 130, 0, 0, 255 );
-		dirx = diry = 0;
-	} else if ( y_val > 140 ) {
-		y_val = map( y_val, 140, 255, 0, 255 );
-		dirx = diry = 1;
-	}
 
-	left_speed = y_val;
-	right_speed = y_val;
-      		
-	if ( x_val < 120 || x_val > 130 ) {
-		if ( x_val < 120 ) {	// turn left
-			x_val = map( x_val, 120, 0, 0, y_val );
-			left_speed -= x_val;
-		} else if ( x_val > 130 ) {	// turn right
-			x_val = map( x_val, 130, 255, 0, y_val );
-			right_speed -= x_val;
-		}
-	  }
-  } else if ( (x_val < 120 || x_val > 130) && (y_val >= 128 && y_val <= 132) ) {
-    	  if ( x_val < 120 ) {	// turn left
-	  	x_val = map( x_val, 120, 0, 0, 255l );
-		dirx = 1;
-		left_speed = x_val;
-                diry = 0;
-                right_speed = x_val;
-	  } else if ( x_val > 130 ) {	// turn right
-	  	x_val = map( x_val, 130, 255, 0, 255 );
-                dirx = 0;
-		left_speed = x_val;
-                diry = 1;
-                right_speed = x_val;
-	  }
-        
-  } else {
-	left_speed = 0;
-	right_speed = 0;
-  }
-  set_left_motor(left_speed, dirx);
-  set_right_motor(right_speed, diry);
-
+  bool ok = radio.write( commandstring,8 );
+  if (ok)
+    printf("ok\n\r");
+  else
+    printf("failed\n\r");
+  // Try again in a short while
+  delay(20);
 }
 
 
 //**************************************************
 
-void init_motors() {
-  // set output modes
-  pinMode(IN_A1, OUTPUT);
-  pinMode(IN_A2, OUTPUT);
-  pinMode(EN_A, OUTPUT);
-  pinMode(IN_B1, OUTPUT);
-  pinMode(IN_B2, OUTPUT);
-  pinMode(EN_B, OUTPUT);
 
-  
-  // initialize ports to safely turn off the motors
-  stop_motors();
-}
 
-void stop_motors(){
-  set_left_motor( 0, dirx);
-  set_right_motor( 0, diry);
-
-}
-
-void set_left_motor(int speed, boolean dir) {
-  speed = constrain(speed, 0, 255);
-  analogWrite(EN_A, speed);     // PWM on enable lines
-  digitalWrite(IN_A1, dir);
-  digitalWrite(IN_A2, ! dir);
-}
-
-void set_right_motor(int speed, boolean dir) {
-  speed = constrain(speed, 0, 255);
-  analogWrite(EN_B, speed);     // PWM on enable lines
-  digitalWrite(IN_B1, dir);
-  digitalWrite(IN_B2, ! dir);
-}
 
