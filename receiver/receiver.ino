@@ -13,6 +13,7 @@
 #include "nRF24L01.h"
 #include "RF24.h"
 
+// CE,CSN
 RF24 radio(9,10);
 // radio addresses
 uint8_t addresses[][13] = {"MyBargeComs1","MyBargeComs2"}; // coms1 = remote, coms2 = barge
@@ -83,6 +84,7 @@ void loop() {
         x_val=commandstring[0];       
         y_val=commandstring[1];
         Serial.print("X: "); Serial.print(x_val); Serial.print(" Y: "); Serial.println(y_val);
+        // forwards or backwards
         if ( y_val < 130 || y_val > 140 ) {
   	  if ( y_val < 130 ) {
 	  y_val = map( y_val, 130, 0, 0, 255 );
