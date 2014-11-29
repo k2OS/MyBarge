@@ -56,7 +56,7 @@ void setup()
 
 	delay( 50 );
 
-	Serial.println( "******************" );
+	Serial.println( "***** remote control ready *****" );
 }
 
 //**************************************************
@@ -70,9 +70,7 @@ void loop() {
   Serial.print("X: "); Serial.print(x_val); Serial.print(" Y: "); Serial.println(y_val);
 
   bool ok = radio.write( commandstring,8 );
-  if (ok)
-    printf("ok\n\r");
-  else
+  if (!ok)
     printf("failed\n\r");
   // Try again in a short while
   delay(20);

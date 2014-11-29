@@ -35,8 +35,9 @@ int x_val,y_val = 0; // values read from the joystick controller
 int left_speed,right_speed = 0;
 
 
-// for now we are only se
-// attached to them - ie.
+// for now we are only send 8 bytes
+// 0 = x_val
+// 1 = y_val
 uint8_t commandstring[8];
 
 unsigned long time = 0;
@@ -64,7 +65,7 @@ void setup()
 
         delay( 50 );
 
-	Serial.println( "******************" );
+	Serial.println( "***** receiver ready *****" );
 }
 
 //**************************************************
