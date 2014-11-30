@@ -71,9 +71,6 @@ void setup()
 
 //**************************************************
 void loop() {
-/*  x_val = analogRead(potPin_x)/4;
-  y_val = analogRead(potPin_y)/4;
-*/
 // read from radio, do stuff below - if timout reached, kill motors
 
     if ( radio.available() ) {
@@ -81,20 +78,24 @@ void loop() {
       while (radio.available()) {
         // Fetch the payload, and see if this was the last one.
         radio.read( commandstring, 8 );
+//        x_val=commandstring[0];       
+//        y_val=commandstring[1];
         x_val=commandstring[0];       
         y_val=commandstring[1];
+
         Serial.print("X: "); Serial.print(x_val); Serial.print(" Y: "); Serial.println(y_val);
         // forwards or backwards
-        if ( y_val < 130 || y_val > 140 ) {
-  	  if ( y_val < 130 ) {
+        if ( y_val < 128 || y_val > 132 ) {
+  	  if ( y_val < 128 ) {
 	  y_val = map( y_val, 130, 0, 0, 255 );
   		dirx = diry = 0;
-	  } else if ( y_val > 140 ) {
+	  } else if ( y_val > 132 ) {
 	  	y_val = map( y_val, 140, 255, 0, 255 );
   		dirx = diry = 1;
 	  }
 	  left_speed = y_val;
 	  right_speed = y_val;
+          // do we want to turn as well?
 	  if ( x_val < 120 || x_val > 130 ) {
 	  	if ( x_val < 120 ) {	// turn left
 	  		x_val = map( x_val, 120, 0, 0, y_val );
@@ -104,8 +105,9 @@ void loop() {
 	  		right_speed -= x_val;
 	  	}
 	    }
-         } else if ( (x_val < 120 || x_val > 130) && (y_val >= 128 && y_val <= 132) ) {
-    	    if ( x_val < 120 ) {	// turn left
+         } else if ( (x_val < 128 || x_val > 132) && (y_val > 131 && y_val <= 133) ) {
+            Serial.println("Flip it!");
+       	    if ( x_val < 120 ) {	// turn left
 	  	x_val = map( x_val, 120, 0, 0, 255l );
 		dirx = 1;
 		left_speed = x_val;

@@ -28,8 +28,8 @@ unsigned long time = 0;
 
 
 // joystick pins
-int potPin_x = 1; //potentiometer to control the speed of motor 1
-int potPin_y = 0; //potentiometer to control the speed of motor 2
+int potPin_x = 0; //potentiometer to control the speed of motor 1
+int potPin_y = 1; //potentiometer to control the speed of motor 2
 int joyButton = A2;
 
 //**************************************************

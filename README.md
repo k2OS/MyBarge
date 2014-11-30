@@ -6,6 +6,7 @@ sunken disc golf discs.
 The controls are heavily influenced by (read: I copied it it directly) 
 The Pepsi Bottle RC Boat ( https://github.com/shane-taurean/Pepsi_Bottle_RC_Boat ) using different libraries for communications, but essentially the controls are the same..
 
+See https://labitat.dk/wiki/MyBarge for details such as pictures and more as they arrive.
 
 Hardware (the not-complete-list):
 - 2x Arduino (1 for remote and one for operating the boat)
