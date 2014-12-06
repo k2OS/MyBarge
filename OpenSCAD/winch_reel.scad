@@ -43,10 +43,9 @@ difference() {
 
 	}
 
+// rope tie
+translate([0,0,25]) rotate([0,90,0]) cylinder(r=2,h=60,center=true);
 
-
-	// debug
-//	translate([-40/2,-40/2,-0.01]) { cube([42,42,20]); }
 
 }
 
