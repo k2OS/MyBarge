@@ -36,14 +36,15 @@ int x_val,y_val = 0; // values read from the joystick controller
 int left_speed,right_speed = 0;
 
 
-// for now we are only send 8 bytes
+// for now we are only sending 8 bytes
 // 0 = x_val
 // 1 = y_val
 uint8_t commandstring[8];
 
 unsigned long time = 0;
 
-
+unsigned long RXtout = 1000; // how long will we wait for new commands before total shutdown?
+                             // not implemented yet
 
 //**************************************************
 void setup() 
@@ -168,3 +169,11 @@ void set_right_motor(int speed, boolean dir) {
   digitalWrite(IN_B2, ! dir);
 }
 
+
+void stop_all() {
+  // stop all motors in case we loose contact to control
+  stop_motors(); // stop propulsion
+//  stop_winch(); // stop the winch
+//  stop_pumps(); // stop the pumps
+  // change status-ligt to red here or where stop_all is called?
+}
