@@ -1,18 +1,20 @@
 $fn = 50;
-/*
+
 // bøjle
  difference() {
-	translate([10,-60,0]) cube([6,120,80]);
-	translate([5,0,40]) rotate([0,90,0]) cylinder(r=15/2,h=20);
+	translate([5,-60,0]) cube([6,120,80]);
+	translate([0,0,40]) rotate([0,90,0]) cylinder(r=15/2,h=20);
 }
+	translate([3,0,0]) {
  difference() {
-	translate([-97,-60,0]) cube([10,120,80]);
-	translate([-120,0,40]) rotate([0,90,0]) cylinder(r=4,h=50);
+		translate([-85,-60,0]) cube([10,120,80]);
+		translate([-85.5,0,40]) rotate([0,90,0]) cylinder(r=4,h=11);
+	}
  }
+translate([-35,50,20]) color("white") rotate([0,90,0]) cylinder(r=3,h=90,center=true);
 
-*/
 
-//color("gray")translate([-1,0,40]) rotate([0,-90,0]) {
+color("gray")translate([-1,0,40]) rotate([0,-90,0]) {
 difference() {
 	// c = 2*PI*r <=> c = 2*3.14..*20 <=> c = 125.6mm
 	// c2 = 126.6x2 <=> 251.2 = 2*3.14*r <=> r = 251.2/2*3.14 <=> r = 40 
@@ -33,7 +35,7 @@ difference() {
 	translate([3.1,-5,-0.2]) cube([10,10,16]);
  }
  // shaft - ball bearing
-	translate([0,0,62.5]) cylinder(r=21/2,h=8);
+	translate([0,0,62.5]) cylinder(r=21.3/2,h=8);
 	translate([0,0,60]) cylinder(r=15/2,h=5);
 
 	// tightening screw
@@ -49,4 +51,4 @@ translate([0,0,25]) rotate([0,90,0]) cylinder(r=2,h=60,center=true);
 
 }
 
-//}
+}

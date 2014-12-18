@@ -12,6 +12,7 @@
 #include "nRF24L01.h"
 #include "RF24.h"
 #include "printf.h"
+// CE, CS
 RF24 radio(9,10);
 // radio addresses
 uint8_t addresses[][13] = {"MyBargeComs1","MyBargeComs2"}; // coms1 = remote, coms2 = barge
