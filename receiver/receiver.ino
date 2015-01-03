@@ -8,6 +8,7 @@
 * - add one or more buttons to the remote controlm, in addition to the button the joystick for various functions like winch up/down, lights on/off, go-home, lock position etc.
 * - auto-kill all motors if no command-strings received for X seconds
 * Prepare to change to another motor controller as I suspect the L293 won't handle slightly larger motors and amp-draws
+* - L298 is used instead - looks like a drop-in replacement, but hasn't been tested yet
 /*******************************************************************************/
 
 #include <SPI.h>
@@ -46,6 +47,7 @@ int left_speed,right_speed = 0;
 uint8_t commandstring[8];
 
 unsigned long time = 0;
+unsigned long lastMsg = 0;
 
 unsigned long RXtout = 1000; // how long will we wait for new commands before total shutdown?
                              // not implemented yet
@@ -86,7 +88,7 @@ void loop() {
         radio.read( commandstring, 8 );
         x_val=commandstring[0];       
         y_val=commandstring[1];
-
+        lastMsg = millis();
         Serial.print("X: "); Serial.print(x_val); Serial.print(" Y: "); Serial.println(y_val);
         // forwards or backwards
         // make the threshold and directions easier to manipulate.. hmm.. TODO
@@ -139,6 +141,7 @@ void loop() {
          set_right_motor(right_speed, dirB);
        
       } // while radio..
+      if (millis()-lastMsg > RXtout) { Serial.println("no messages for 1 second - stop everything!"); }
     } // if radio..
 } // loop
 
