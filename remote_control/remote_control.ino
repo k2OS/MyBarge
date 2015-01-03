@@ -45,9 +45,10 @@ void setup()
           radio.begin();                           // Setup and configure rf radio
       //    radio.setChannel(1); // default is 76.. should be good
           radio.setPALevel(RF24_PA_MAX);
-          radio.setDataRate(RF24_1MBPS);
-          radio.setAutoAck(1);                     // Ensure autoACK is enabled
-          radio.setRetries(2,15);                   // Optionally, increase the delay between retries & # of retries
+          radio.setDataRate(RF24_250KBPS);
+//          radio.setDataRate(RF24_1MBPS);
+          radio.setAutoAck(false);                     // Ensure autoACK is disabled
+//          radio.setRetries(2,15);                   // Optionally, increase the delay between retries & # of retries
           radio.setCRCLength(RF24_CRC_8); 
           radio.openWritingPipe(addresses[0]);          // must be reversed for the barge receiver
 //          radio.openReadingPipe(1,addresses[1]);
@@ -71,6 +72,8 @@ void loop() {
   Serial.print("X: "); Serial.print(x_val); Serial.print(" Y: "); Serial.println(y_val);
 
   bool ok = radio.write( commandstring,8 );
+
+  // aucto-ack has been disabled, write() will always return true
   if (!ok)
     printf("failed\n\r");
   // Try again in a short while

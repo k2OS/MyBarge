@@ -5,8 +5,9 @@
 *
 * TODO/Ideas:
 * - add trim on remote controller side to 1) allow for slight drift of the pot-values read from the joystick and 2) to conpensate for differences in the motors/drag of the boat. Might not be necessary at all.
-* - add one or more buttons to the remote controlm, in addition to the button the joystick for various functions
-* - auto-kill motors if no command-strings received for 5 seconds
+* - add one or more buttons to the remote controlm, in addition to the button the joystick for various functions like winch up/down, lights on/off, go-home, lock position etc.
+* - auto-kill all motors if no command-strings received for X seconds
+* Prepare to change to another motor controller as I suspect the L293 won't handle slightly larger motors and amp-draws
 /*******************************************************************************/
 
 #include <SPI.h>
@@ -28,8 +29,11 @@ int IN_B1 = 4;      // to 1A of L293D
 int IN_B2 = 7;      // to 2A of L293D
 
 
-boolean dirx,diry = 1;  // 1 (true) indicates forward, 0 indicates reverse
 
+boolean dirA,dirB = 1;  // 1 (true) indicates forward, 0 indicates reverse
+
+// X = forwards or backwards (255= full speed ahead - 127 or lower == stop (or reverse))
+// Y = turn - 0 = turn/rotate left, 255 = turn/rotate right
 int x_val,y_val = 0; // values read from the joystick controller
                      // these are to be sent from the remote controller
 
@@ -55,9 +59,9 @@ void setup()
           radio.begin();                           // Setup and configure rf radio
       //    radio.setChannel(1); // default is 76.. should be good
           radio.setPALevel(RF24_PA_MAX);
-          radio.setDataRate(RF24_1MBPS);
-          radio.setAutoAck(1);                     // Ensure autoACK is enabled
-          radio.setRetries(2,15);                   // Optionally, increase the delay between retries & # of retries
+          radio.setDataRate(RF24_250KBPS);
+          radio.setAutoAck(false);                     // Ensure autoACK is disabled
+//          radio.setRetries(2,15);                   // Optionally, increase the delay between retries & # of retries
           radio.setCRCLength(RF24_CRC_8); 
 //          radio.openWritingPipe(addresses[1]);          // must be reversed for the barge remote control
           radio.openReadingPipe(1,addresses[0]);
@@ -78,55 +82,61 @@ void loop() {
       // Dump the payloads until we've gotten everything
       while (radio.available()) {
         // Fetch the payload, and see if this was the last one.
+        // again, we're just receiving 8 bytes
         radio.read( commandstring, 8 );
-//        x_val=commandstring[0];       
-//        y_val=commandstring[1];
         x_val=commandstring[0];       
         y_val=commandstring[1];
 
         Serial.print("X: "); Serial.print(x_val); Serial.print(" Y: "); Serial.println(y_val);
         // forwards or backwards
-        if ( y_val < 128 || y_val > 132 ) {
-  	  if ( y_val < 128 ) {
-	  y_val = map( y_val, 130, 0, 0, 255 );
-  		dirx = diry = 0;
-	  } else if ( y_val > 132 ) {
-	  	y_val = map( y_val, 140, 255, 0, 255 );
-  		dirx = diry = 1;
+        // make the threshold and directions easier to manipulate.. hmm.. TODO
+        // x-value seems to be 127 when at rest for my particular joystick
+        if ( x_val < 126 || x_val > 132 ) {
+  	  if ( x_val < 126 ) {
+                x_val = 0;
+                 dirA = dirB = 1;
+/*    
+	        x_val = map( x_val, 130, 0, 10, 255 );
+  		dirA = dirB = 0;
+*/
+	  } else if ( x_val > 132 ) {
+	  	x_val = map( x_val, 140, 255, 10, 255 );
+  		dirA = dirB = 1;
 	  }
-	  left_speed = y_val;
-	  right_speed = y_val;
+	  left_speed = x_val;
+	  right_speed = x_val;
           // do we want to turn as well?
-	  if ( x_val < 120 || x_val > 130 ) {
-	  	if ( x_val < 120 ) {	// turn left
-	  		x_val = map( x_val, 120, 0, 0, y_val );
-	  		left_speed -= x_val;
-	  	} else if ( x_val > 130 ) {	// turn right
-	  		x_val = map( x_val, 130, 255, 0, y_val );
-	  		right_speed -= x_val;
+          // 122 seems to be the y-value when at rest for my particular joystick
+	  if ( y_val < 120 || y_val > 130 ) {
+	  	if ( y_val < 120 ) {	// turn left
+	  		y_val = map( y_val, 120, 0, 0, y_val );
+	  		left_speed -= y_val;
+	  	} else if ( y_val > 130 ) {	// turn right
+	  		y_val = map( y_val, 130, 255, 0, y_val );
+	  		right_speed -= y_val;
 	  	}
 	    }
-         } else if ( (x_val < 128 || x_val > 132) && (y_val > 131 && y_val <= 133) ) {
+         } else if ( (y_val < 128 || y_val > 132) && (x_val > 131 && x_val <= 133) ) {
             Serial.println("Flip it!");
-       	    if ( x_val < 120 ) {	// turn left
-	  	x_val = map( x_val, 120, 0, 0, 255l );
-		dirx = 1;
-		left_speed = x_val;
-                diry = 0;
-                right_speed = x_val;
-	    } else if ( x_val > 130 ) {	// turn right
-	  	x_val = map( x_val, 130, 255, 0, 255 );
-                dirx = 0;
-		left_speed = x_val;
-                diry = 1;
-                right_speed = x_val;
+       	    if ( y_val < 120 ) {	// turn left
+	  	y_val = map( y_val, 120, 0, 0, 255 );
+		dirB = 1;
+		right_speed = y_val; // when using pumps, we always go forwards
+                //dirA = 0;
+                left_speed = 0;
+	    } else if ( y_val > 130 ) {	// turn right
+	  	y_val = map( y_val, 130, 255, 0, 255 );
+                dirA = 1;
+		left_speed = y_val;
+                //dirB = 1; // when using pumps, we always go forwards
+                right_speed = 0;
 	    }
          } else {
 	   left_speed = 0;
 	   right_speed = 0;
          }
-         set_left_motor(left_speed, dirx);
-         set_right_motor(right_speed, diry);
+         set_left_motor(left_speed, dirA);
+         set_right_motor(right_speed, dirB);
        
       } // while radio..
     } // if radio..
@@ -150,8 +160,8 @@ void init_motors() {
 }
 
 void stop_motors(){
-  set_left_motor( 0, dirx);
-  set_right_motor( 0, diry);
+  set_left_motor( 0, dirA);
+  set_right_motor( 0, dirB);
 
 }
 
