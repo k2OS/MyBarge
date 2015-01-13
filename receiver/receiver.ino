@@ -113,22 +113,22 @@ void loop() {
 	  	if ( y_val < 120 ) {	// turn left
 	  		y_val = map( y_val, 120, 0, 0, y_val );
 	  		left_speed -= y_val;
-	  	} else if ( y_val > 130 ) {	// turn right
-	  		y_val = map( y_val, 130, 255, 0, y_val );
+	  	} else if ( y_val > 123 ) {	// turn right
+	  		y_val = map( y_val, 123, 255, 0, y_val );
 	  		right_speed -= y_val;
 	  	}
 	    }
-         } else if ( (y_val < 128 || y_val > 132) && (x_val > 131 && x_val <= 133) ) {
+         } else if ( (y_val < 120 || y_val > 123) && (x_val > 126 && x_val <= 128) ) {
             Serial.println("Flip it!");
        	    if ( y_val < 120 ) {	// turn left
 	  	y_val = map( y_val, 120, 0, 0, 255 );
-		dirB = 1;
+		dirA = 1;
 		right_speed = y_val; // when using pumps, we always go forwards
                 //dirA = 0;
                 left_speed = 0;
-	    } else if ( y_val > 130 ) {	// turn right
-	  	y_val = map( y_val, 130, 255, 0, 255 );
-                dirA = 1;
+	    } else if ( y_val > 123 ) {	// turn right
+	  	y_val = map( y_val, 123, 255, 0, 255 );
+                dirB = 1;
 		left_speed = y_val;
                 //dirB = 1; // when using pumps, we always go forwards
                 right_speed = 0;
@@ -137,8 +137,8 @@ void loop() {
 	   left_speed = 0;
 	   right_speed = 0;
          }
-         set_left_motor(left_speed, dirA);
-         set_right_motor(right_speed, dirB);
+         set_left_motor(left_speed, dirB);
+         set_right_motor(right_speed, dirA);
        
       } // while radio..
       if (millis()-lastMsg > RXtout) { Serial.println("no messages for 1 second - stop everything!"); }
@@ -163,23 +163,23 @@ void init_motors() {
 }
 
 void stop_motors(){
-  set_left_motor( 0, dirA);
-  set_right_motor( 0, dirB);
+  set_left_motor( 0, dirB);
+  set_right_motor( 0, dirA);
 
 }
 
 void set_left_motor(int speed, boolean dir) {
   speed = constrain(speed, 0, 255);
-  analogWrite(EN_A, speed);     // PWM on enable lines
-  digitalWrite(IN_A1, dir);
-  digitalWrite(IN_A2, ! dir);
+  analogWrite(EN_B, speed);     // PWM on enable lines
+  digitalWrite(IN_B1, dir);
+  digitalWrite(IN_B2, ! dir);
 }
 
 void set_right_motor(int speed, boolean dir) {
   speed = constrain(speed, 0, 255);
-  analogWrite(EN_B, speed);     // PWM on enable lines
-  digitalWrite(IN_B1, dir);
-  digitalWrite(IN_B2, ! dir);
+  analogWrite(EN_A, speed);     // PWM on enable lines
+  digitalWrite(IN_A1, dir);
+  digitalWrite(IN_A2, ! dir);
 }
 
 
