@@ -4,11 +4,13 @@
 * Initial one-arduino setup to test and add functionality in control of thrust with PS2 Joystick
 *
 * TODO/Ideas:
-* - add trim on remote controller side to 1) allow for slight drift of the pot-values read from the joystick and 2) to conpensate for differences in the motors/drag of the boat. Might not be necessary at all.
+* - add trim on remote controller side to 1) allow for slight drift of the pot-values read from the joystick and 2) to compensate for differences in the motors/drag of the boat. Might not be necessary at all.
 * - add one or more buttons to the remote controlm, in addition to the button the joystick for various functions like winch up/down, lights on/off, go-home, lock position etc.
 * - auto-kill all motors if no command-strings received for X seconds
 * Prepare to change to another motor controller as I suspect the L293 won't handle slightly larger motors and amp-draws
 * - L298 is used instead - looks like a drop-in replacement, but hasn't been tested yet
+* See this guy for inspirating for cleaner/more readable code: https://www.youtube.com/watch?v=eVnyPSAefxU
+ */
 /*******************************************************************************/
 
 #include <SPI.h>
@@ -79,8 +81,6 @@ void setup()
 //**************************************************
 void loop() {
 // read from radio, do stuff below - if timout reached, kill motors
-
-    if ( radio.available() ) {
       // Dump the payloads until we've gotten everything
       while (radio.available()) {
         // Fetch the payload, and see if this was the last one.
@@ -93,14 +93,11 @@ void loop() {
         // forwards or backwards
         // make the threshold and directions easier to manipulate.. hmm.. TODO
         // x-value seems to be 127 when at rest for my particular joystick
+        // change to map values to 1-100 at the transmitter for easier-to-use values
         if ( x_val < 126 || x_val > 132 ) {
   	  if ( x_val < 126 ) {
                 x_val = 0;
                  dirA = dirB = 1;
-/*    
-	        x_val = map( x_val, 130, 0, 10, 255 );
-  		dirA = dirB = 0;
-*/
 	  } else if ( x_val > 132 ) {
 	  	x_val = map( x_val, 140, 255, 10, 255 );
   		dirA = dirB = 1;
@@ -142,7 +139,7 @@ void loop() {
        
       } // while radio..
       if (millis()-lastMsg > RXtout) { Serial.println("no messages for 1 second - stop everything!"); }
-    } // if radio..
+    
 } // loop
 
 
