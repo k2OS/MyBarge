@@ -6,11 +6,15 @@
 * TODO/Ideas:
 * - add trim on remote controller side to 1) allow for slight drift of the pot-values read from the joystick and 2) to compensate for differences in the motors/drag of the boat. Might not be necessary at all.
 * - add one or more buttons to the remote controlm, in addition to the button the joystick for various functions like winch up/down, lights on/off, go-home, lock position etc.
-* - auto-kill all motors if no command-strings received for X seconds
+
 * Prepare to change to another motor controller as I suspect the L293 won't handle slightly larger motors and amp-draws
 * - L298 is used instead - looks like a drop-in replacement, but hasn't been tested yet
 * See this guy for inspirating for cleaner/more readable code: https://www.youtube.com/watch?v=eVnyPSAefxU
- */
+* DONE:
+*  - auto-kill all motors if no command-strings received for 1 second
+*/
+
+
 /*******************************************************************************/
 
 #include <SPI.h>

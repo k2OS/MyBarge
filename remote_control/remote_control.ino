@@ -5,7 +5,9 @@
 *
 * TODO/Ideas:
 * - add trim on remote controller side to 1) allow for slight drift of the pot-values read from the joystick and 2) to conpensate for differences in the motors/drag of the boat. Might not be necessary at all.
-* - add one or more buttons to the remote controlm, in addition to the button the joystick for various functions
+* - add one or more buttons to the remote control, in addition to the button the joystick for various functions
+* * See this guy for inspirating for cleaner/more readable code: https://www.youtube.com/watch?v=eVnyPSAefxU
+ */
 /*******************************************************************************/
 
 #include <SPI.h>
@@ -52,8 +54,6 @@ void setup()
           radio.setCRCLength(RF24_CRC_8); 
           radio.openWritingPipe(addresses[0]);          // must be reversed for the barge receiver
 //          radio.openReadingPipe(1,addresses[1]);
-      
-//          radio.startListening();                 // Start listening
           radio.printDetails();                   // Dump the configuration of the rf unit for debugging
 
 	delay( 50 );
