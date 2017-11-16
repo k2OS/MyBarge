@@ -6,11 +6,10 @@
 * TODO/Ideas:
 * - add trim on remote controller side to 1) allow for slight drift of the pot-values read from the joystick and 2) to compensate for differences in the motors/drag of the boat. Might not be necessary at all.
 * - add one or more buttons to the remote controlm, in addition to the button the joystick for various functions like winch up/down, lights on/off, go-home, lock position etc.
-
-* Prepare to change to another motor controller as I suspect the L293 won't handle slightly larger motors and amp-draws
-* - L298 is used instead - looks like a drop-in replacement, but hasn't been tested yet
-* See this guy for inspirating for cleaner/more readable code: https://www.youtube.com/watch?v=eVnyPSAefxU
+* 
+* * * See this guy for inspirating for cleaner/more readable code: https://www.youtube.com/watch?v=eVnyPSAefxU
 * DONE:
+* - changed to L298N
 *  - auto-kill all motors if no command-strings received for 1 second
 */
 
@@ -18,7 +17,6 @@
 /*******************************************************************************/
 
 #include <SPI.h>
-#include "nRF24L01.h"
 #include "RF24.h"
 
 // CE,CSN
@@ -26,31 +24,48 @@ RF24 radio(9,10);
 // radio addresses
 uint8_t addresses[][13] = {"MyBargeComs1","MyBargeComs2"}; // coms1 = remote, coms2 = barge
 
-// motor pins
-int EN_A  = 5;      // to 1,2EN of L293D
-int IN_A1 = 2;      // to 1A of L293D
-int IN_A2 = 3;      // to 2A of L293D
-
-int EN_B  = 6;      // to 1,2EN of L293D
-int IN_B1 = 4;      // to 1A of L293D
-int IN_B2 = 7;      // to 2A of L293D
-
-
-
 boolean dirA,dirB = 1;  // 1 (true) indicates forward, 0 indicates reverse
 
-// X = forwards or backwards (255= full speed ahead - 127 or lower == stop (or reverse))
-// Y = turn - 0 = turn/rotate left, 255 = turn/rotate right
+// throttle = forwards or backwards (256= full speed ahead - -256 == reverse)
+// direction = turn - 0 = turn/rotate left, 255 = turn/rotate right
 int x_val,y_val = 0; // values read from the joystick controller
                      // these are to be sent from the remote controller
+int motorSpeedA,motorSpeedB = 0;
+int maxSpeed = 255;
 
-int left_speed,right_speed = 0;
+
+// ramp-stuff
+unsigned long int prevRampTimeA = 0;
+unsigned long int prevRampTimeB = 0;
+unsigned long int rampdelay = 50; // ms mellem hver pwm-skifte
+int speedstep = 5;
+int targetspeedA = 0; // to be read from radio/joystick
+int targetspeedB = 0; // to be read from radio/joystick
+int rampDirA = 1; // 1 == up, -1 == down
+int rampDirB = 1; // 1 == up, -1 == down
+int currentspeedA = 0; // what is our current speed (to be written to PWM)
+int currentspeedB = 0; // what is our current speed (to be written to PWM)
 
 
-// for now we are only sending 8 bytes
-// 0 = x_val
-// 1 = y_val
-uint8_t commandstring[8];
+
+// motor B (3,4,5)
+int enB = 3; 
+int in1 = 5;
+int in2 = 4;
+
+// motor A (6,7,8)
+int enA = 6;
+int in3 = 7;
+int in4 = 8;
+
+struct myData {
+  int throttle; // joystick x direction
+  int direction; // joystick y direction - move this to a 2nd joystick when I get around to building it
+  int aux1; // joystick button
+  int aux2; // extra button
+};
+myData data;
+
 
 unsigned long time = 0;
 unsigned long lastMsg = 0;
@@ -61,133 +76,138 @@ unsigned long RXtout = 1000; // how long will we wait for new commands before to
 //**************************************************
 void setup() 
 {
-	Serial.begin( 57600 );
-	init_motors();
+//	Serial.begin( 115200 );
         // init radio
           radio.begin();                           // Setup and configure rf radio
-      //    radio.setChannel(1); // default is 76.. should be good
-          radio.setPALevel(RF24_PA_MAX);
-          radio.setDataRate(RF24_250KBPS);
           radio.setAutoAck(false);                     // Ensure autoACK is disabled
-//          radio.setRetries(2,15);                   // Optionally, increase the delay between retries & # of retries
+//          radio.setPALevel(RF24_PA_LOW);
+          radio.setDataRate(RF24_250KBPS);
+
           radio.setCRCLength(RF24_CRC_8); 
-//          radio.openWritingPipe(addresses[1]);          // must be reversed for the barge remote control
-          radio.openReadingPipe(1,addresses[0]);
+          radio.openReadingPipe(1,addresses[1]);
       
           radio.startListening();                 // Start listening
-          radio.printDetails();                   // Dump the configuration of the rf unit for debugging
+ //         radio.printDetails();                   // Dump the configuration of the rf unit for debugging
+ 
+data.throttle = 0;
+data.direction = 0;
 
-        delay( 50 );
-
-	Serial.println( "***** receiver ready *****" );
+  // Set all the motor control pins to outputs
+  pinMode(enA, OUTPUT);
+  pinMode(enB, OUTPUT);
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
+  pinMode(in3, OUTPUT);
+  pinMode(in4, OUTPUT);
+  // Start with motors disabled and direction forward
+  
+  // Motor A
+  digitalWrite(enA, LOW);
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  // Motor B
+  digitalWrite(enB, LOW);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
 }
 
 //**************************************************
 void loop() {
-// read from radio, do stuff below - if timout reached, kill motors
-      // Dump the payloads until we've gotten everything
-      while (radio.available()) {
-        // Fetch the payload, and see if this was the last one.
-        // again, we're just receiving 8 bytes
-        radio.read( commandstring, 8 );
-        x_val=commandstring[0];       
-        y_val=commandstring[1];
-        lastMsg = millis();
-        Serial.print("X: "); Serial.print(x_val); Serial.print(" Y: "); Serial.println(y_val);
-        // forwards or backwards
-        // make the threshold and directions easier to manipulate.. hmm.. TODO
-        // x-value seems to be 127 when at rest for my particular joystick
-        // change to map values to 1-100 at the transmitter for easier-to-use values
-        if ( x_val < 126 || x_val > 132 ) {
-  	  if ( x_val < 126 ) {
-                x_val = 0;
-                 dirA = dirB = 1;
-	  } else if ( x_val > 132 ) {
-	  	x_val = map( x_val, 140, 255, 10, 255 );
-  		dirA = dirB = 1;
-	  }
-	  left_speed = x_val;
-	  right_speed = x_val;
-          // do we want to turn as well?
-          // 122 seems to be the y-value when at rest for my particular joystick
-	  if ( y_val < 120 || y_val > 130 ) {
-	  	if ( y_val < 120 ) {	// turn left
-	  		y_val = map( y_val, 120, 0, 0, y_val );
-	  		left_speed -= y_val;
-	  	} else if ( y_val > 123 ) {	// turn right
-	  		y_val = map( y_val, 123, 255, 0, y_val );
-	  		right_speed -= y_val;
-	  	}
-	    }
-         } else if ( (y_val < 120 || y_val > 123) && (x_val > 126 && x_val <= 128) ) {
-            Serial.println("Flip it!");
-       	    if ( y_val < 120 ) {	// turn left
-	  	y_val = map( y_val, 120, 0, 0, 255 );
-		dirA = 1;
-		right_speed = y_val; // when using pumps, we always go forwards
-                //dirA = 0;
-                left_speed = 0;
-	    } else if ( y_val > 123 ) {	// turn right
-	  	y_val = map( y_val, 123, 255, 0, 255 );
-                dirB = 1;
-		left_speed = y_val;
-                //dirB = 1; // when using pumps, we always go forwards
-                right_speed = 0;
-	    }
-         } else {
-	   left_speed = 0;
-	   right_speed = 0;
-         }
-         set_left_motor(left_speed, dirB);
-         set_right_motor(right_speed, dirA);
-       
-      } // while radio..
-      if (millis()-lastMsg > RXtout) { Serial.println("no messages for 1 second - stop everything!"); }
-    
+        if( radio.available()){
+          while (radio.available()) {                                   // While there is data ready
+            radio.read( &data, sizeof(myData) );             // Get the payload
+            lastMsg = millis();
+          }
+    //      Serial.print("Throttle: "); Serial.print(data.throttle); Serial.print("Direction: ");Serial.println(data.direction);
+        }
+        if (millis() - lastMsg > RXtout) {
+          data.throttle = 0;
+          data.direction = 0;
+        }
+ 
+        // going forward:
+        if (data.throttle > 5) {
+          // Set Motor A forward
+          digitalWrite(in1, HIGH);
+          digitalWrite(in2, LOW);
+          // Set Motor B forward
+          digitalWrite(in3, HIGH);
+          digitalWrite(in4, LOW);
+ 
+//          motorSpeedA = map(data.throttle,0,256,0,maxSpeed);
+//          motorSpeedB = map(data.throttle,0,256,0,maxSpeed);
+          motorSpeedA = data.throttle;
+          motorSpeedB = data.throttle;
+        } else if (data.throttle < -5) { // going reverse
+          // Set Motor A backwards
+          digitalWrite(in1, LOW);
+          digitalWrite(in2, HIGH);
+          // Set Motor B backwards
+          digitalWrite(in3, LOW);
+          digitalWrite(in4, HIGH);
+ 
+          motorSpeedA = data.throttle*-1;
+          motorSpeedB = data.throttle*-1;
+        
+        } else {
+          motorSpeedA = 0;
+          motorSpeedB = 0;
+        }
+
+        // Steering - left
+        if (data.direction < -5) {
+          y_val = data.direction*-1;
+          motorSpeedA = motorSpeedA-y_val;
+  //        motorSpeedB = motorSpeedB+y_val;
+
+          if (motorSpeedA < 0) { motorSpeedA = 0; }
+          if (motorSpeedB > maxSpeed) { motorSpeedB = maxSpeed; }
+        } else if (data.direction > 5) { // steering right
+          y_val = data.direction;
+//          motorSpeedA = motorSpeedA+y_val;
+          motorSpeedB = motorSpeedB-y_val;
+
+          if (motorSpeedA > maxSpeed) { motorSpeedA = maxSpeed; }
+          if (motorSpeedB < 0) { motorSpeedB = 0; }
+          
+        }
+        if (motorSpeedA < 10) { motorSpeedA = 0; }
+        if (motorSpeedB < 10) { motorSpeedB = 0; }
+        //delay(10);
+
+  targetspeedA = motorSpeedA;
+  targetspeedB = motorSpeedB;
+  if (currentspeedA != targetspeedA) { // we have not reached the targetspeed yet
+      if ( millis()-rampdelay > prevRampTimeA) { // only change speed every $rampdelay
+        int diff = targetspeedA-currentspeedA; // negative number == go slower / positive == go faster
+        rampDirA = diff/abs(diff); // returns -1 if we are above target and 1 if we are below
+        currentspeedA += speedstep*rampDirA;
+        if (currentspeedA > targetspeedA && rampDirA == 1) { currentspeedA = targetspeedA; }
+        if (currentspeedA < targetspeedA && rampDirA == -1) { currentspeedA = targetspeedA; }
+        prevRampTimeA = millis();
+      }
+  }
+  if (currentspeedB != targetspeedB) { // we have not reached the targetspeed yet
+      if ( millis()-rampdelay > prevRampTimeB) { // only change speed every $rampdelay
+        int diff = targetspeedB-currentspeedB; // negative number == go slower / positive == go faster
+        rampDirB = diff/abs(diff); // returns -1 if we are above target and 1 if we are below
+        currentspeedB += speedstep*rampDirB;
+        if (currentspeedB > targetspeedB && rampDirB == 1) { currentspeedB = targetspeedB; }
+        if (currentspeedB < targetspeedB && rampDirB == -1) { currentspeedB = targetspeedB; }
+        prevRampTimeB = millis();
+      }
+  }
+        
+        // Set the motor speeds
+        analogWrite(enA, motorSpeedA);
+        analogWrite(enB, motorSpeedB);
+        // Set the motor speeds - with ramps
+//        analogWrite(enA, currentspeedA);
+//        analogWrite(enB, currentspeedB);
+
 } // loop
 
 
 //**************************************************
 
-void init_motors() {
-  // set output modes
-  pinMode(IN_A1, OUTPUT);
-  pinMode(IN_A2, OUTPUT);
-  pinMode(EN_A, OUTPUT);
-  pinMode(IN_B1, OUTPUT);
-  pinMode(IN_B2, OUTPUT);
-  pinMode(EN_B, OUTPUT);
 
-  
-  // initialize ports to safely turn off the motors
-  stop_motors();
-}
-
-void stop_motors(){
-  set_left_motor( 0, dirB);
-  set_right_motor( 0, dirA);
-
-}
-
-void set_left_motor(int speed, boolean dir) {
-  speed = constrain(speed, 0, 255);
-  analogWrite(EN_B, speed);     // PWM on enable lines
-  digitalWrite(IN_B1, dir);
-  digitalWrite(IN_B2, ! dir);
-}
-
-void set_right_motor(int speed, boolean dir) {
-  speed = constrain(speed, 0, 255);
-  analogWrite(EN_A, speed);     // PWM on enable lines
-  digitalWrite(IN_A1, dir);
-  digitalWrite(IN_A2, ! dir);
-}
-
-
-void stop_all() {
-  // stop all motors in case we loose contact to control
-  stop_motors(); // stop propulsion
-//  stop_winch(); // stop the winch
-//  stop_pumps(); // stop the pumps
-  // change status-ligt to red here or where stop_all is called?
-}

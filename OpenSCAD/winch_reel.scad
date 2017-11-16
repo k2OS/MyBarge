@@ -36,8 +36,8 @@ difference() {
 	translate([3.1,-5,-0.2]) cube([10,10,16]);
  }
  // shaft - ball bearing
-	translate([0,0,62.2]) cylinder(r=23/2,h=8);
-	translate([0,0,60]) cylinder(r=15/2,h=5);
+	translate([0,0,59]) cylinder(r=23/2,h=11.1);
+	translate([0,0,58]) cylinder(r=20/2,h=5);
 
 	// tightening screw
 	translate([0,0,6]) {
